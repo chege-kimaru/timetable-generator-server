@@ -112,7 +112,7 @@ public class JSONParser {
             Subject s = new Subject(sObject.getInt("id"), sObject.getInt("subject_group_id"),
                     null, sObject.getString("name"), sObject.getBoolean("hasLab"));
 
-            JSONObject sgObject = sObject.getJSONObject("subjectGroup");
+            JSONObject sgObject = sObject.getJSONObject("subject_group");
             SubjectGroup sg = new SubjectGroup(sgObject.getInt("id"), sgObject.getString("name"));
             s.group = sg;
 
