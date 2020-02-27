@@ -34,10 +34,10 @@ public class GeneratorService {
         run();
 
         //test
-        printTimeTables("form1", "class", 1);
-        printTimeTables("form2", "class", 2);
-        printTimeTables("liz", "teacher", 1);
-        printTimeTables("kevin", "teacher", 3);
+//        printTimeTables("form1", "class", 1);
+//        printTimeTables("form2", "class", 2);
+//        printTimeTables("liz", "teacher", 1);
+//        printTimeTables("kevin", "teacher", 3);
     }
 
     private void run() {
