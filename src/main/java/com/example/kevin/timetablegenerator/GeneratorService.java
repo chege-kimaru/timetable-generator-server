@@ -18,9 +18,14 @@ public class GeneratorService {
      */
     int ALLOCATION_LESSONS = 5;
 
-    final int EPOCH = 10;
-    final int MAX_TEACHER_LESSONS = 4;
-    boolean ALL_LABS_ALLOCATED = false;
+    final int EPOCH = 30;
+    int MAX_TEACHER_LESSONS = 6;
+    boolean ALL_LABS_ALLOCATED = true;
+    boolean TEACHER_2_CONSECUTIVE_LESSONS_WITHOUT_BREAK_RULE = true;
+    boolean TEACHER_2_CONSECUTIVE_SCIENCE_DOUBLES_RULE = true;
+    boolean SUBJECT_REPEAT_ON_SAME_DAY_RULE = true;
+    boolean STUDENT_MAX_2_SCIENCE_DOUBLE_DAY_RULE = true;
+    boolean SUBJECT_SAME_GROUP_CONSECUTIVE_RULE = true;
 
     public GeneratorService(JSONParser parser) {
         subjectGroups = parser.getSubjectGroups();
@@ -34,10 +39,18 @@ public class GeneratorService {
         run();
 
         //test
-//        printTimeTables("form1", "class", 1);
-//        printTimeTables("form2", "class", 2);
+        try {
+            if (streams.get(0) != null) {
+                printTimeTables("Class 1", "class", streams.get(0).id);
+            }
+            if (streams.get(1) != null) {
+                printTimeTables("Class 2", "class", streams.get(1).id);
+            }
 //        printTimeTables("liz", "teacher", 1);
 //        printTimeTables("kevin", "teacher", 3);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private void run() {
@@ -52,6 +65,18 @@ public class GeneratorService {
         }
         //repeat assigning a predefined number of times
         for (int epoch = 0; epoch < EPOCH; epoch++) {
+            // relax rules for the next 10 rounds
+            if (epoch == 10) {
+                TEACHER_2_CONSECUTIVE_LESSONS_WITHOUT_BREAK_RULE = false;
+                TEACHER_2_CONSECUTIVE_SCIENCE_DOUBLES_RULE = false;
+                STUDENT_MAX_2_SCIENCE_DOUBLE_DAY_RULE = false;
+                SUBJECT_SAME_GROUP_CONSECUTIVE_RULE = false;
+            }
+            if (epoch == 20) {
+                MAX_TEACHER_LESSONS = 8;
+                SUBJECT_REPEAT_ON_SAME_DAY_RULE = false;
+            }
+
             //loop over the days
             for (int day = 1; day <= 5; day++) {
                 //Loop over the periods
@@ -157,11 +182,13 @@ public class GeneratorService {
 
 
         //Class does not happen twice in a day not unless it is a double
-        for (Period period : a.periods.get(day)) {
-            if (period.id != periodId - 1 || period.toBreak) return false;
+        if (SUBJECT_REPEAT_ON_SAME_DAY_RULE) {
+            for (Period period : a.periods.get(day)) {
+                if (period.id != periodId - 1 || period.toBreak) return false;
+            }
         }
 
-        //Teacher should have a max of lessons per day
+        //Teacher should have a max of 4 lessons per day
         //Teacher cannot have 3 sessions consecutively without break
         //Teacher cannot have 2 science doubles consecutively
         //Find all allocated sciences for this teacher today
@@ -187,41 +214,46 @@ public class GeneratorService {
         if (teacherPeriods.size() >= MAX_TEACHER_LESSONS) return false;
 
         //Teacher cannot have more than 2 sessions consecutively without break
-        int l = 1;
-        for (int period : teacherPeriods.keySet()) {
-            if (l >= 2) {
-                //check if the -2 period and -1 period are consecutive without break
-                //check if the -1 period and current allocation are going to be consecutive without a break
-                try {
-                    int neg2 = teacherPeriods.get(period - 2);
-                    int neg1 = teacherPeriods.get(period - 1);
-                    if (!getPeriodById(neg2).toBreak && !getPeriodById(neg1).toBreak && periodId == period - 1) {
-                        return false;
-                    }
-                } catch (NullPointerException e) {
+        if (TEACHER_2_CONSECUTIVE_LESSONS_WITHOUT_BREAK_RULE) {
+            int l = 1;
+            for (int period : teacherPeriods.keySet()) {
+                if (l >= 2) {
+                    //check if the -2 period and -1 period are consecutive without break
+                    //check if the -1 period and current allocation are going to be consecutive without a break
+                    try {
+                        int neg2 = teacherPeriods.get(period - 2);
+                        int neg1 = teacherPeriods.get(period - 1);
+                        if (!getPeriodById(neg2).toBreak && !getPeriodById(neg1).toBreak && periodId == period - 1) {
+                            return false;
+                        }
+                    } catch (NullPointerException e) {
 
+                    }
                 }
+                l++;
             }
-            l++;
         }
-        //Teacher cannot have 2 science doubles consecutively
-        int i = 1;
-        for (int period : teacherPeriodSciences.keySet()) {
-            if (i >= 3) {
-                //check if the -3 period and -2 period are same allocation (that is double)
-                //check if the -1 period are same allocation with current allocation (to create double)
-                try {
-                    int neg3 = teacherPeriodSciences.get(period - 3);
-                    int neg2 = teacherPeriodSciences.get(period - 2);
-                    if (neg3 == neg2 && !getPeriodById(neg3).toBreak && !getPeriodById(neg2).toBreak) {
-                        int neg1 = teacherPeriodSciences.get(period - 1);
-                        if (neg1 == a.id && !getPeriodById(neg1).toBreak) return false;
-                    }
-                } catch (NullPointerException e) {
 
+        //Teacher cannot have 2 science doubles consecutively
+        if (TEACHER_2_CONSECUTIVE_SCIENCE_DOUBLES_RULE) {
+            int i = 1;
+            for (int period : teacherPeriodSciences.keySet()) {
+                if (i >= 3) {
+                    //check if the -3 period and -2 period are same allocation (that is double)
+                    //check if the -1 period are same allocation with current allocation (to create double)
+                    try {
+                        int neg3 = teacherPeriodSciences.get(period - 3);
+                        int neg2 = teacherPeriodSciences.get(period - 2);
+                        if (neg3 == neg2 && !getPeriodById(neg3).toBreak && !getPeriodById(neg2).toBreak) {
+                            int neg1 = teacherPeriodSciences.get(period - 1);
+                            if (neg1 == a.id && !getPeriodById(neg1).toBreak) return false;
+                        }
+                    } catch (NullPointerException e) {
+
+                    }
                 }
+                i++;
             }
-            i++;
         }
 
 
@@ -230,32 +262,36 @@ public class GeneratorService {
 
             if (allocation.stream_id == a.stream_id) {
                 //Students can only have a max of 2 sessions of science doubles a day
-                int scienceDbsToday = 0;
-                if (allocation.subject.group.name.equals("science")) {
-                    Period prevPeriod = null;
-                    for (Period period : allocation.periods.get(day)) {
-                        if (prevPeriod != null && !prevPeriod.toBreak && period.id - 1 == prevPeriod.id) {
-                            scienceDbsToday++;
-                            prevPeriod = null;
-                        } else {
-                            prevPeriod = period;
+                if (STUDENT_MAX_2_SCIENCE_DOUBLE_DAY_RULE) {
+                    int scienceDbsToday = 0;
+                    if (allocation.subject.group.name.equals("science")) {
+                        Period prevPeriod = null;
+                        for (Period period : allocation.periods.get(day)) {
+                            if (prevPeriod != null && !prevPeriod.toBreak && period.id - 1 == prevPeriod.id) {
+                                scienceDbsToday++;
+                                prevPeriod = null;
+                            } else {
+                                prevPeriod = period;
+                            }
                         }
                     }
+                    if (scienceDbsToday > 2) return false;
                 }
-                if (scienceDbsToday > 2) return false;
 
                 //subjects in the same group cannot be consecutive unless double
-                for (Period period : allocation.periods.get(day)) {
-                    boolean isConsecutive = period.id == periodId - 1 && !period.toBreak;
-                    boolean isDouble = allocation.subject_id == a.subject_id;
-                    boolean isSameGroup = allocation.subject.group.name.equals(a.subject.group.name);
-                    if (isConsecutive && !isDouble && isSameGroup) return false;
+                if (SUBJECT_SAME_GROUP_CONSECUTIVE_RULE) {
+                    for (Period period : allocation.periods.get(day)) {
+                        boolean isConsecutive = period.id == periodId - 1 && !period.toBreak;
+                        boolean isDouble = allocation.subject_id == a.subject_id;
+                        boolean isSameGroup = allocation.subject.group.name.equals(a.subject.group.name);
+                        if (isConsecutive && !isDouble && isSameGroup) return false;
+                    }
                 }
             }
 
             //Is teacher free
             //Is class free
-            if (allocation.teacher_id == a.teacher_id||
+            if (allocation.teacher_id == a.teacher_id ||
                     allocation.stream_id == a.stream_id) {
                 for (Period period : allocation.periods.get(day)) {
                     if (period.id == periodId) return false;
